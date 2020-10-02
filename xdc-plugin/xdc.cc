@@ -27,6 +27,9 @@
  *   Tcl interpreter.
  */
 #include <cassert>
+#include <algorithm>
+#include <cctype>
+#include <locale>
 #include "kernel/register.h"
 #include "kernel/rtlil.h"
 #include "kernel/log.h"
@@ -36,6 +39,28 @@
 USING_YOSYS_NAMESPACE
 
 PRIVATE_NAMESPACE_BEGIN
+
+// https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+
+// trim from start (in place)
+static inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+// trim from end (in place)
+static inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+
+// trim from both ends (in place)
+static inline void trim(std::string &s) {
+    ltrim(s);
+    rtrim(s);
+}
 
 static bool isInputPort(RTLIL::Wire* wire) {
 	return wire->port_input;
@@ -106,6 +131,7 @@ struct GetPorts : public Pass {
 		}
 
 		port_str.resize(strlen(port_str.c_str()));
+                trim(port_str);
 		RTLIL::IdString port_id(RTLIL::escape_id(port_str));
 		if (auto wire = top_module->wire(port_id)) {
 			if (isInputPort(wire) || isOutputPort(wire)) {
